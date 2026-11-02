@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: rag
+          POSTGRES_PASSWORD: rag
+          POSTGRES_DB: rag_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rag -d rag_test" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      RAG_TEST_DATABASE_URL: postgresql://rag:rag@localhost:5432/rag_test
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -e ".[dev,vertex,openai]"
+      - name: Lint
+        run: ruff check src tests && ruff format --check src tests
+      - name: Unit, API and Postgres integration tests
+        run: pytest
+      - name: Retrieval quality gate (golden set, offline providers)
+        run: |
+          retail-rag ingest
+          retail-rag eval --min-hit-at-5 0.8 --min-ood-refusal 0.85
+      - name: Quality gate on Postgres + pgvector
+        env:
+          RAG_VECTOR_STORE: postgres
+          RAG_DATABASE_URL: postgresql://rag:rag@localhost:5432/rag_test
+        run: |
+          retail-rag ingest --rebuild
+          retail-rag eval --out reports/ci-postgres --min-hit-at-5 0.8 --min-ood-refusal 0.85
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t retail-rag:ci .

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Retail Assistant</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --ink:#1d1d1f; --muted:#6b6b70; --line:#e3e3e0; --accent:#2f6fde; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#141416; --card:#1e1e21; --ink:#ececee; --muted:#9a9aa1; --line:#2e2e33; --accent:#6ea0ff; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, Segoe UI, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:760px; margin:0 auto; padding:24px 16px 48px; }
+  h1 { font-size:20px; margin:0 0 4px; } p.sub { color:var(--muted); margin:0 0 20px; }
+  form { display:grid; grid-template-columns:1fr 110px 110px auto; gap:8px; }
+  input, button { font:inherit; padding:10px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+  button { background:var(--accent); color:#fff; border-color:var(--accent); cursor:pointer; }
+  @media (max-width:600px) { form { grid-template-columns:1fr 1fr; } form input[name=q] { grid-column:1/-1; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; margin-top:16px; }
+  .answer { white-space:pre-wrap; } .meta { color:var(--muted); font-size:13px; margin-top:10px; }
+  .src a { color:var(--accent); text-decoration:none; } .src li { margin:4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Retail product assistant</h1>
+  <p class="sub">Ask about toys and outdoor play products. Answers cite the catalogue items they use.</p>
+  <form id="f">
+    <input name="q" placeholder="e.g. a kiddie pool for the backyard under $25" required minlength="3" maxlength="500">
+    <input name="min" type="number" min="0" step="0.01" placeholder="Min $">
+    <input name="max" type="number" min="0" step="0.01" placeholder="Max $">
+    <button>Ask</button>
+  </form>
+  <div id="out"></div>
+</main>
+<script>
+const out = document.getElementById('out');
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+document.getElementById('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const filters = {};
+  if (fd.get('min')) filters.min_price = Number(fd.get('min'));
+  if (fd.get('max')) filters.max_price = Number(fd.get('max'));
+  out.innerHTML = '<div class="card meta">Thinking...</div>';
+  try {
+    const r = await fetch('/v1/ask', {method:'POST', headers:{'content-type':'application/json'},
+      body: JSON.stringify({question: fd.get('q'), filters})});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || r.statusText);
+    const src = d.citations.map(c => `<li>[${esc(c.ref)}] ${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.product_name)}</a>` : esc(c.product_name)}${c.price != null ? ` · $${c.price.toFixed(2)}` : ''}</li>`).join('');
+    out.innerHTML = `<div class="card"><div class="answer">${esc(d.answer)}</div>
+      ${src ? `<ul class="src">${src}</ul>` : ''}
+      <div class="meta">${esc(d.model)} · ${esc(d.prompt_version)} · ${Object.entries(d.timings_ms).map(([k,v]) => `${k} ${v} ms`).join(' · ')}</div></div>`;
+  } catch (err) { out.innerHTML = `<div class="card">Error: ${esc(err.message)}</div>`; }
+});
+</script>
+</body>
+</html>

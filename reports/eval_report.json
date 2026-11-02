@@ -1,0 +1,55 @@
+{
+  "golden_set": "C:\\Users\\craig\\Desktop\\PROJECTS\\Advanced-AI-Projects\\AI-Powered-QA-Retail-App\\AI-Powered-QA-Retail-App\\eval\\golden_set.jsonl",
+  "questions": {
+    "answerable": 29,
+    "out_of_scope": 7
+  },
+  "embedding": "hashing:384",
+  "llm": "offline/extractive",
+  "store": "memory",
+  "retrieval": {
+    "vector": {
+      "hit@1": 0.5172,
+      "hit@5": 0.8276,
+      "recall@5": 0.6724,
+      "mrr@10": 0.6429,
+      "misses@5": [
+        "q01",
+        "q02",
+        "q12",
+        "q13",
+        "q27"
+      ]
+    },
+    "keyword": {
+      "hit@1": 0.6552,
+      "hit@5": 0.9655,
+      "recall@5": 0.8534,
+      "mrr@10": 0.7816,
+      "misses@5": [
+        "q01"
+      ]
+    },
+    "hybrid": {
+      "hit@1": 0.6207,
+      "hit@5": 0.8966,
+      "recall@5": 0.7443,
+      "mrr@10": 0.7454,
+      "misses@5": [
+        "q01",
+        "q02",
+        "q27"
+      ]
+    }
+  },
+  "end_to_end": {
+    "answer_hit_rate": 0.8621,
+    "grounded_rate": 1.0,
+    "false_refusal_rate": 0.0,
+    "false_refusals": [],
+    "ood_refusal_rate": 1.0,
+    "ood_not_refused": [],
+    "latency_ms_p50": 19.7,
+    "latency_ms_p95": 21.3
+  }
+}
